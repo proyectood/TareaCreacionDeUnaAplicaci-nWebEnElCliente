@@ -1,0 +1,345 @@
+<!-- 
+    Maestro: Octavio Aguirre Lozano
+    Materia: Computación en el Cliente Web
+    Tarea: Creación de una aplicación web en el cliente
+    Creado por: Leonardo Jovanny Razón Rios
+    Fecha de creación: 04/feb/2021
+    Ultima Modificación: 06/feb/2021
+    Última modificación por: Leonardo Jovanny Razón Rios
+ -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tareas</title>
+    <!-- Inclusion del archivo JQuery -->
+    <script type="text/javascript" src="jquery-3.4.1.min.js"></script>
+</head>
+<body>
+    <!-- Contenedor del formulario para el ingreso de tareas -->
+    <div>
+        <h3>Gestión de tareas</h3>
+        <hr>
+        <label for="titulo">Titulo</label><br>
+        <input type="text" id="titulo"><br><br>
+        <label for="descripcion">Descripción</label><br>
+        <textarea id="descripcion" cols="60" rows="2"></textarea><br><br>
+        <input type="button" id="btnAgregar" value="Agregar tarea">
+    </div>
+    <!-- Contenedor de la tabla en la cual se mostraran las tareas -->
+    <div>
+        <table id="tblTareas">
+            <thead>
+                <tr>
+                    <th>Titulo</th>
+                    <th>Descripción</th>
+                    <th>Estatus</th>
+                    <th>Acción</th>
+                </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+    </div>
+    <!-- Contenedor de las alertas -->
+    <div id="alertas">
+        <div>
+            <h2>Titulo</h2>
+            <hr>
+            <p>Mensaje</p>
+            <div id="tiempoAlerta"></div>
+        </div>
+    </div>
+
+    <script>
+        // Declaración de la variable del tipo array, la cual almacenara todas las tareas
+        var tareasJson = [];
+        // Se asigna la funcionalidad que realizara una vez este cargado el documento 
+        $(document).ready(function(){
+            // Verificación para saber si esta soportado local storage por el navegador
+            if(typeof(Storage) !== "undefined"){
+                // Si soporta localstorage, hace un llamado a la función actualizarTabla()
+                actualizarTabla();
+            }else{
+                // Si no soporta localstorage, muestra un mensaje informando al usuario
+                document.body.innerHTML = '<h3>Sin Soporte Para Local Storage!</h3>'
+            }
+            
+            // Asocia el evento click al elemento con id btnAgregar
+            $("#btnAgregar").click(function(){
+                agregar();
+            });
+
+            // Asocia el evento hover al elemento con id btnAgregar
+            $("#btnAgregar").hover(function(){
+                $("#btnAgregar").css("background-color", "#287d10");
+                $("#btnAgregar").css("color", "#e3e3e3");
+                }, 
+                function(){
+                    $("#btnAgregar").css("background-color", "#009f11");
+                    $("#btnAgregar").css("color", "#fff");
+            });
+            // Se hace uso de jquery para ocultar el div de las alertas cuando el documento inicia  
+            $("#alertas").css("display", "none");
+            // Se invoca la función que agrega los estilos a los elementos de la pagina
+            agregarEstilos();
+        });
+
+        /**
+         * Función que hace las validaciones en campos y en caso satisfactorio 
+         * agrega la tarea en el almacenamiento local
+         *
+         * @return void
+         */
+        function agregar() {
+            let titulo = $("#titulo");
+            let descripcion = $("#descripcion");
+            if(titulo.val().trim() != '' & descripcion.val().trim() != ''){
+                var tarea = {
+                'titulo': titulo.val(),
+                'descripcion': descripcion.val(),
+                'estatus': 'programada'
+                };
+                tareasJson.push(tarea);
+                localStorage.removeItem("tareas");
+                var tareasJsonStringify = JSON.stringify(tareasJson);
+                localStorage.setItem('tareas', tareasJsonStringify);
+                actualizarTabla();
+                alertas("Tarea Agregada","Se agrego la tarea "+titulo.val()+" correctamente!");
+                titulo.val("");
+                descripcion.val("");
+                titulo.focus();
+            }else{
+                alertas("Error","Se detectaron campos vacíos en el formulario, por favor llenarlos todos antes de agregar la tarea!");
+            }
+        }
+
+        /**
+         * Función que actualiza los datos existentes en el arreglo que contiene 
+         * las tareas, emparejandolas con las que existen en el almacenamiento local
+         * y las muestra en la tabla
+         *
+         * @return void
+         */
+        function actualizarTabla() {
+            if(localStorage.getItem("tareas") !== null){
+                var tareasLS = JSON.parse(localStorage.getItem("tareas"));
+                tareasJson = tareasLS;
+
+                document.getElementById('tblTareas').children[1].innerHTML = '';
+
+                tareasJson.forEach(function(element, index) {
+                    let template = '';
+                    let btnTexto = '';
+                    switch (element.estatus) {
+                        case 'programada':
+                                template = '<tr>';
+                                btnTexto = 'Iniciar';
+                            break;
+                        case 'iniciada':
+                                template = '<tr class="iniciada">';
+                                btnTexto = 'Cerrar';
+                            break;
+                        case 'finalizada':
+                                template = '<tr class="finalizada">';
+                                btnTexto = 'Eliminar';
+                            break;
+                    }
+                    template += '<td>' + element.titulo + '</td>';
+                    template += '<td>' + element.descripcion + '</td>';
+                    template += '<td>' + element.estatus + '</td>';
+                    template += '<td><input type="button" class="'+element.estatus+'" value="'+btnTexto+'" onclick="accion(this,'+index+')"></td>';
+                    template += '</tr>';
+                    document.getElementById('tblTareas').children[1].insertAdjacentHTML("beforeend", template);
+                });
+                if(tareasJson.length < 1){
+                    let template = '<tr><td colspan="4">No hay tareas programadas, puedes descansar ó revisar si hay algo que hacer.</td></tr>';
+                    document.getElementById('tblTareas').children[1].insertAdjacentHTML("beforeend", template);
+                }
+            }
+            $("tr").hover(function(){
+                $(this).css("background-color", "#78afea");
+                $(this).css("color", "#fff");
+                }, 
+                function(){
+                    agregarEstilos();
+            });
+            agregarEstilos();
+        }
+
+        /**
+         * Función para personalizar las alertas que se muestran al usuario
+         *
+         * @param {String} titulo
+         * @param {String} mensaje
+         * @param {int} tiempo
+         * 
+         * @return void
+         */
+        function alertas(titulo = "Titulo",mensaje = "Mensaje",tiempo = 1){
+            $("#alertas h2").text(titulo);
+            $("#alertas p").text(mensaje);
+            // $("#alertas").css("display", "block");
+            $("#alertas").fadeIn(tiempo * 300);
+            let intervalo = 99;
+            let duracion = parseInt(tiempo * 10);
+            let temporizador = setInterval(() => {
+                $("#tiempoAlerta").css("width", intervalo + "%"); 
+                if(intervalo > 0){
+                    intervalo--;
+                } else {
+                    clearInterval(temporizador);
+                    $("#tiempoAlerta").css("width", intervalo + "99%"); 
+                    // $("#alertas").css("display", "none");
+                    $("#alertas").fadeOut(tiempo * 300);
+                }
+                
+            }, duracion);
+        }
+
+        /**
+         * Función que realiza una acción especifica en la tarea especificada según el indice
+         * recibido como parámetro y, dependiendo de el estatus en el que se encuentre la tarea, 
+         * mismo que verifica desde el objeto recibido 
+         *
+         * @param {object} e
+         * @param {int} i
+         * 
+         * @return void
+         */
+        function accion(e,i) {
+            let accion = e.value;
+            switch (accion) {
+                case 'Iniciar':
+                    alertas("Tarea Iniciada","La tarea se ha iniciado correctamente. A trabajar en ella!");
+                    tareasJson[i].estatus = 'iniciada';
+                    localStorage.removeItem("tareas");
+                    var tareasJsonStringify = JSON.stringify(tareasJson);
+                    localStorage.setItem('tareas', tareasJsonStringify);
+                    actualizarTabla();
+                    break;
+                case 'Cerrar':
+                    alertas("Tarea Cerrada","La tarea se ha cerrado correctamente. Vamos avanzando!");
+                    tareasJson[i].estatus = 'finalizada';
+                    localStorage.removeItem("tareas");
+                    var tareasJsonStringify = JSON.stringify(tareasJson);
+                    localStorage.setItem('tareas', tareasJsonStringify);
+                    actualizarTabla();
+                    break;
+                case 'Eliminar':
+                    alertas("Tarea Eliminada","La tarea se ha eliminado correctamente!");
+                    tareasJson.splice(i,1);
+                    localStorage.removeItem("tareas");
+                    var tareasJsonStringify = JSON.stringify(tareasJson);
+                    localStorage.setItem('tareas', tareasJsonStringify);
+                    actualizarTabla();
+                    break;
+            }
+        }
+
+        /**
+         * Función que agrega estilos a varios elementos del dom 
+         * haciendo uso de JQuery
+         *
+         * @return void
+         */
+        function agregarEstilos(){
+            $("body").css("width", "800px");
+            $("body").css("height", "80vh");
+            $("body").css("margin", "10px auto");
+            $("body").css("background-color", "#aff0ff");
+            $("body").css("border", "5px groove #d7d7d7");
+            $("body").css("border-radius", "7px");
+
+            $("div").css("width", "100%");
+            $("div").css("margin", "0px auto");
+            $("div").css("text-align", "center");
+            $("div").css("background-color", "#fffde2");
+            $("div").css("padding", "10px 0px");
+
+            $("h3").parent().css("height", "24vh");
+            $("h3").parent().css("overflow", "auto");
+            $("h3").css("text-align", "center");
+
+            $("#btnAgregar").css("background-color", "#009f11");
+            $("#btnAgregar").css("color", "#fff");
+            $("#btnAgregar").css("font-weight", "bolder");
+            $("#btnAgregar").css("padding", "1px 10px");
+            $("#btnAgregar").css("border-radius", "7px");
+            
+            $("#tblTareas").parent().css("height", "52vh");
+            $("#tblTareas").parent().css("overflow-y", "scroll");
+            $("#tblTareas").parent().css("overflow-x", "unset");
+            $("table").css("border", "1px solid black");
+            $("table").css("width", "99%");
+            $("table").css("margin", "10px 7px");
+
+            $("tr:odd").css("background-color", "#c9e3ff");
+            $("tr:even").css("background-color", "#edf6ff");
+            $("tr").css("color", "#000");
+            
+            $("th").css("border", "2px solid #000");
+            $("th").css("background-color", "#37379f");
+            $("th").css("color", "#fff");
+            
+            $("td").css("border", "1px solid black");
+            
+            $("td > input").css("padding", "2px 10px");
+            $("td > input").css("margin", "0px 4px");
+            
+            $(".programada").css("background-color", "#002593");
+            $(".programada").css("color", "#fff");
+            
+            $("input.iniciada").css("background-color", "#199300");
+            $("input.iniciada").css("color", "#fff");
+            
+            $("input.finalizada").css("background-color", "red");
+            $("input.finalizada").css("color", "#fff");
+            
+            $("tr.finalizada > td:not(:contains(finalizada))").css("text-decoration", "line-through solid red");
+            $("tr.finalizada > td:contains(finalizada)").css("color", "red");
+
+            $("tr.iniciada").css("color", "#168200");
+            $("tr.iniciada").css("font-weight", "bold");
+            
+            $("#titulo").css("width", "62%");
+
+            $("#alertas").css("margin", " ");
+            $("#alertas").css("text-align", "center"); 
+            $("#alertas").css("background-color", "#000000ad"); 
+            $("#alertas").css("padding", " "); 
+            $("#alertas").css("position", "absolute");
+            $("#alertas").css("top", "0px");
+            $("#alertas").css("left", "0px");
+            $("#alertas").css("height", "98%");
+            $("#alertas").css("z-index", "10");
+
+            $("#alertas > div").css("width", "45%"); 
+            $("#alertas > div").css("margin", "10% auto"); 
+            $("#alertas > div").css("text-align", "center"); 
+            $("#alertas > div").css("background-color", "#bbe6fb"); 
+            $("#alertas > div").css("padding", "0px 0px");
+            $("#alertas > div").css("position", "relative");
+            $("#alertas > div").css("border", "5px groove #fff");
+            $("#alertas > div").css("border-radius", "15px");
+
+            $("#alertas h2").css("color", "#0f7700");
+            $("#alertas h2").css("text-align", "left");
+            $("#alertas h2").css("margin", "10px 12px");
+            
+            $("#alertas p").css("text-align", "justify");
+            $("#alertas p").css("margin", "10px 14px");
+            $("#alertas p").css("font-weight", "bold");
+            
+            $("#tiempoAlerta").css("width", "99%"); 
+            $("#tiempoAlerta").css("margin", "0px 5px"); 
+            $("#tiempoAlerta").css("text-align", "center"); 
+            $("#tiempoAlerta").css("background-color", "#c1b658"); 
+            $("#tiempoAlerta").css("padding", "3px 0px");
+            $("#tiempoAlerta").css("border-radius", "15px");
+        }
+    </script>
+    
+</body>
+</html>
